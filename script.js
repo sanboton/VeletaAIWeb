@@ -1,173 +1,214 @@
-(function() {
-  // Variables
-  var Photo, addListeners, canvas, createGrid, ctx, gridItem, grids, height, img, imgInfo, imgSrc, imgs, init, magnet, mouse, populateCanvas, render, resizeCanvas, rotateAndPaintImage, updateMouse, useGrid, width;
+////////////////////////// PARTICLE ENGINE ////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////
 
-  canvas = document.getElementById('canvas');
+var ParticleEngine = (function() {
+	'use strict';
 
-  ctx = canvas.getContext('2d');
+	function ParticleEngine(canvas_id) {
+		// enforces new
+		if (!(this instanceof ParticleEngine)) {
+			return new ParticleEngine(args);
+		}
+		
+		var _ParticleEngine = this;
 
-  width = canvas.width = window.innerWidth;
+		this.canvas_id = canvas_id;
+		this.stage = new createjs.Stage(canvas_id);
+		this.totalWidth = this.canvasWidth = document.getElementById(canvas_id).width = document.getElementById(canvas_id).offsetWidth;
+		this.totalHeight = this.canvasHeight = document.getElementById(canvas_id).height = document.getElementById(canvas_id).offsetHeight;
+		this.compositeStyle = "lighter";
 
-  height = canvas.height = window.innerHeight;
+		this.particleSettings = [{id:"small", num:300, fromX:0, toX:this.totalWidth, ballwidth:3, alphamax:0.4, areaHeight:.5, color:"#0cdbf3", fill:false}, 
+								{id:"medium", num:100, fromX:0, toX:this.totalWidth,  ballwidth:8, alphamax:0.3, areaHeight:1, color:"#6fd2f3", fill:true}, 
+								{id:"large", num:10, fromX:0, toX:this.totalWidth, ballwidth:30,  alphamax:0.2, areaHeight:1, color:"#93e9f3", fill:true}];
+		this.particleArray = [];
+		this.lights = [{ellipseWidth:400, ellipseHeight:100, alpha:0.6, offsetX:0, offsetY:0, color:"#6ac6e8"}, 
+						{ellipseWidth:350, ellipseHeight:250, alpha:0.3, offsetX:-50, offsetY:0, color:"#54d5e8"}, 
+						{ellipseWidth:100, ellipseHeight:80, alpha:0.2, offsetX:80, offsetY:-50, color:"#2ae8d8"}];
 
-  imgSrc = canvas.dataset.image;
+		this.stage.compositeOperation = _ParticleEngine.compositeStyle;
 
-  img = new Image();
 
-  useGrid = true;
+		function drawBgLight()
+		{
+			var light;
+			var bounds;
+			var blurFilter;
+			for (var i = 0, len = _ParticleEngine.lights.length; i < len; i++) {				
+				light = new createjs.Shape();
+				light.graphics.beginFill(_ParticleEngine.lights[i].color).drawEllipse(0, 0, _ParticleEngine.lights[i].ellipseWidth, _ParticleEngine.lights[i].ellipseHeight);
+				light.regX = _ParticleEngine.lights[i].ellipseWidth/2;
+				light.regY = _ParticleEngine.lights[i].ellipseHeight/2; 
+				light.y = light.initY = _ParticleEngine.totalHeight/2 + _ParticleEngine.lights[i].offsetY;
+				light.x = light.initX =_ParticleEngine.totalWidth/2 + _ParticleEngine.lights[i].offsetX;
 
-  imgInfo = {};
+				blurFilter = new createjs.BlurFilter(_ParticleEngine.lights[i].ellipseWidth, _ParticleEngine.lights[i].ellipseHeight, 1);
+				bounds = blurFilter.getBounds();
+				light.filters = [blurFilter];
+				light.cache(bounds.x-_ParticleEngine.lights[i].ellipseWidth/2, bounds.y-_ParticleEngine.lights[i].ellipseHeight/2, bounds.width*2, bounds.height*2);
+				light.alpha = _ParticleEngine.lights[i].alpha;
 
-  imgs = [];
+				light.compositeOperation = "screen";
+				_ParticleEngine.stage.addChildAt(light, 0);
 
-  grids = [];
+				_ParticleEngine.lights[i].elem = light;
+			}
 
-  magnet = 2000;
+			TweenMax.fromTo(_ParticleEngine.lights[0].elem, 10, {scaleX:1.5, x:_ParticleEngine.lights[0].elem.initX, y:_ParticleEngine.lights[0].elem.initY},{yoyo:true, repeat:-1, ease:Power1.easeInOut, scaleX:2, scaleY:0.7});
+			TweenMax.fromTo(_ParticleEngine.lights[1].elem, 12, { x:_ParticleEngine.lights[1].elem.initX, y:_ParticleEngine.lights[1].elem.initY},{delay:5, yoyo:true, repeat:-1, ease:Power1.easeInOut, scaleY:2, scaleX:2, y:_ParticleEngine.totalHeight/2-50, x:_ParticleEngine.totalWidth/2+100});
+			TweenMax.fromTo(_ParticleEngine.lights[2].elem, 8, { x:_ParticleEngine.lights[2].elem.initX, y:_ParticleEngine.lights[2].elem.initY},{delay:2, yoyo:true, repeat:-1, ease:Power1.easeInOut, scaleY:1.5, scaleX:1.5, y:_ParticleEngine.totalHeight/2, x:_ParticleEngine.totalWidth/2-200});
+		}
+		
+		var blurFilter;
+		function drawParticles(){
 
-  mouse = {
-    x: 1,
-    y: 0
-  };
+			for (var i = 0, len = _ParticleEngine.particleSettings.length; i < len; i++) {
+				var ball = _ParticleEngine.particleSettings[i];
 
-  init = function() {
-    addListeners();
-    img.onload = function(e) {
-      var numberToShow;
-      // Check for firefox. 
-      imgInfo.width = e.path ? e.path[0].width : e.target.width;
-      imgInfo.height = e.path ? e.path[0].height : e.target.height;
-      numberToShow = (Math.ceil(window.innerWidth / imgInfo.width)) * (Math.ceil(window.innerHeight / imgInfo.height));
-      if (useGrid) {
-        createGrid();
-      }
-      populateCanvas(numberToShow * 4);
-      canvas.classList.add('ready');
-      return render();
-    };
-    return img.src = imgSrc;
-  };
+				var circle;
+				for (var s = 0; s < ball.num; s++ )
+				{
+					circle = new createjs.Shape();
+					if(ball.fill){
+						circle.graphics.beginFill(ball.color).drawCircle(0, 0, ball.ballwidth);
+						blurFilter = new createjs.BlurFilter(ball.ballwidth/2, ball.ballwidth/2, 1);
+						circle.filters = [blurFilter];
+						var bounds = blurFilter.getBounds();
+						circle.cache(-50+bounds.x, -50+bounds.y, 100+bounds.width, 100+bounds.height);
+					}else{
+						circle.graphics.beginStroke(ball.color).setStrokeStyle(1).drawCircle(0, 0, ball.ballwidth);
+					}
+					
+					circle.alpha = range(0, 0.1);
+					circle.alphaMax = ball.alphamax;
+					circle.distance = ball.ballwidth * 2;
+					circle.ballwidth = ball.ballwidth;
+					circle.flag = ball.id;
+					_ParticleEngine.applySettings(circle, ball.fromX, ball.toX, ball.areaHeight);
+					circle.speed = range(2, 10);
+					circle.y = circle.initY;
+					circle.x = circle.initX;
+					circle.scaleX = circle.scaleY = range(0.3, 1);
 
-  addListeners = function() {
-    window.addEventListener('resize', resizeCanvas);
-    window.addEventListener('mousemove', updateMouse);
-    return window.addEventListener('touchmove', updateMouse);
-  };
+					_ParticleEngine.stage.addChild(circle);
+					
 
-  updateMouse = function(e) {
-    mouse.x = e.clientX;
-    return mouse.y = e.clientY;
-  };
+					animateBall(circle);
 
-  resizeCanvas = function() {
-    width = canvas.width = window.innerWidth;
-    return height = canvas.height = window.innerHeight;
-  };
+					_ParticleEngine.particleArray.push(circle);
+				}
+			}	
+		}
 
-  populateCanvas = function(nb) {
-    var i, p, results;
-    i = 0;
-    results = [];
-    while (i <= nb) {
-      p = new Photo();
-      imgs.push(p);
-      results.push(i++);
-    }
-    return results;
-  };
+		this.applySettings = function(circle, positionX, totalWidth, areaHeight)
+		{
+			circle.speed = range(1, 3);
+			circle.initY = weightedRange(0, _ParticleEngine.totalHeight , 1, [_ParticleEngine.totalHeight * (2-areaHeight/2)/4, _ParticleEngine.totalHeight*(2+areaHeight/2)/4], 0.8 );
+			circle.initX = weightedRange(positionX, totalWidth, 1, [positionX+ ((totalWidth-positionX))/4, positionX+ ((totalWidth-positionX)) * 3/4], 0.6);
+		}
 
-  createGrid = function() {
-    var c, grid, i, imgScale, item, j, k, l, r, ref, ref1, ref2, results, x, y;
-    imgScale = 0.5;
-    grid = {
-      row: Math.ceil(window.innerWidth / (imgInfo.width * imgScale)),
-      cols: Math.ceil(window.innerHeight / (imgInfo.height * imgScale)),
-      rowWidth: imgInfo.width * imgScale,
-      colHeight: imgInfo.height * imgScale
-    };
-    for (r = j = 0, ref = grid.row; (0 <= ref ? j < ref : j > ref); r = 0 <= ref ? ++j : --j) {
-      x = r * grid.rowWidth;
-      for (c = k = 0, ref1 = grid.cols; (0 <= ref1 ? k < ref1 : k > ref1); c = 0 <= ref1 ? ++k : --k) {
-        y = c * grid.colHeight;
-        item = new gridItem(x, y, grid.rowWidth, grid.colHeight);
-        grids.push(item);
-      }
-    }
-    results = [];
-    for (i = l = 0, ref2 = grids.length; (0 <= ref2 ? l < ref2 : l > ref2); i = 0 <= ref2 ? ++l : --l) {
-      results.push(grids[i].draw());
-    }
-    return results;
-  };
+		function animateBall(ball)
+		{
+			var scale = range(0.3, 1);
+			var xpos = range(ball.initX - ball.distance, ball.initX + ball.distance);
+			var ypos = range(ball.initY - ball.distance, ball.initY + ball.distance);
+			var speed = ball.speed;
+			TweenMax.to(ball, speed, {scaleX:scale, scaleY:scale, x:xpos, y:ypos, onComplete:animateBall, onCompleteParams:[ball], ease:Cubic.easeInOut});	
+			TweenMax.to(ball, speed/2, {alpha:range(0.1, ball.alphaMax), onComplete:fadeout, onCompleteParams:[ball, speed]});	
+		}	
 
-  gridItem = function(x = 0, y = 0, w, h) {
-    this.draw = function() {
-      ctx.drawImage(img, x, y, w, h);
-    };
-  };
+		function fadeout(ball, speed)
+		{
+			ball.speed = range(2, 10);
+			TweenMax.to(ball, speed/2, {alpha:0 });
+		}
 
-  Photo = function() {
-    var TO_RADIANS, finalX, finalY, forceX, forceY, h, r, seed, w, x, y;
-    seed = Math.random() * (2.5 - 0.7) + 0.7;
-    w = imgInfo.width / seed;
-    h = imgInfo.height / seed;
-    x = window.innerWidth * Math.random();
-    finalX = x;
-    y = window.innerHeight * Math.random();
-    finalY = y;
-    console.log(`INIT Y :: ${finalY} || INIT X :: ${finalX}`);
-    r = Math.random() * (180 - (-180)) + (-180);
-    forceX = 0;
-    forceY = 0;
-    TO_RADIANS = Math.PI / 180;
-    this.update = function() {
-      var distance, dx, dy, powerX, powerY, x0, x1, y0, y1;
-      x0 = x;
-      y0 = y;
-      x1 = mouse.x;
-      y1 = mouse.y;
-      dx = x1 - x0;
-      dy = y1 - y0;
-      distance = Math.sqrt((dx * dx) + (dy * dy));
-      powerX = x0 - (dx / distance) * magnet / distance;
-      powerY = y0 - (dy / distance) * magnet / distance;
-      forceX = (forceX + (finalX - x0) / 2) / 2.1;
-      forceY = (forceY + (finalY - y0) / 2) / 2.2;
-      x = powerX + forceX;
-      y = powerY + forceY;
-    };
-    this.draw = function() {
-      return rotateAndPaintImage(ctx, img, r * TO_RADIANS, x, y, w / 2, h / 2, w, h);
-    };
-  };
+		drawBgLight();
+		drawParticles();
+	}
 
-  rotateAndPaintImage = function(context, image, angle, positionX, positionY, axisX, axisY, widthX, widthY) {
-    context.translate(positionX, positionY);
-    context.rotate(angle);
-    context.drawImage(image, -axisX, -axisY, widthX, widthY);
-    context.rotate(-angle);
-    return context.translate(-positionX, -positionY);
-  };
+	ParticleEngine.prototype.render = function()
+	{
+		this.stage.update();
+	}
 
-  render = function() {
-    var x, y;
-    x = 0;
-    y = 0;
-    ctx.clearRect(0, 0, width, height);
-    while (y < grids.length) {
-      grids[y].draw();
-      y++;
-    }
-    while (x < imgs.length) {
-      imgs[x].update();
-      imgs[x].draw();
-      x++;
-    }
-    return requestAnimationFrame(render);
-  };
+	ParticleEngine.prototype.resize = function()
+	{
+		this.totalWidth = this.canvasWidth = document.getElementById(this.canvas_id).width = document.getElementById(this.canvas_id).offsetWidth;
+		this.totalHeight = this.canvasHeight = document.getElementById(this.canvas_id).height = document.getElementById(this.canvas_id).offsetHeight;
+		this.render();
 
-  init();
+		for (var i= 0, length = this.particleArray.length; i < length; i++)
+		{
+			this.applySettings(this.particleArray[i], 0, this.totalWidth, this.particleArray[i].areaHeight);
+		}
 
-}).call(this);
+		for (var j = 0, len = this.lights.length; j < len; j++) {
+			this.lights[j].elem.initY = this.totalHeight/2 + this.lights[j].offsetY;
+			this.lights[j].elem.initX =this.totalWidth/2 + this.lights[j].offsetX;
+			TweenMax.to(this.lights[j].elem, .5, {x:this.lights[j].elem.initX, y:this.lights[j].elem.initY});			
+		}
+	}
 
-//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiIiwic291cmNlUm9vdCI6IiIsInNvdXJjZXMiOlsiPGFub255bW91cz4iXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6IkFBQUE7RUFBQTtBQUFBLE1BQUEsS0FBQSxFQUFBLFlBQUEsRUFBQSxNQUFBLEVBQUEsVUFBQSxFQUFBLEdBQUEsRUFBQSxRQUFBLEVBQUEsS0FBQSxFQUFBLE1BQUEsRUFBQSxHQUFBLEVBQUEsT0FBQSxFQUFBLE1BQUEsRUFBQSxJQUFBLEVBQUEsSUFBQSxFQUFBLE1BQUEsRUFBQSxLQUFBLEVBQUEsY0FBQSxFQUFBLE1BQUEsRUFBQSxZQUFBLEVBQUEsbUJBQUEsRUFBQSxXQUFBLEVBQUEsT0FBQSxFQUFBOztFQUNBLE1BQUEsR0FBUyxRQUFRLENBQUMsY0FBVCxDQUF3QixRQUF4Qjs7RUFDVCxHQUFBLEdBQU0sTUFBTSxDQUFDLFVBQVAsQ0FBa0IsSUFBbEI7O0VBQ04sS0FBQSxHQUFRLE1BQU0sQ0FBQyxLQUFQLEdBQWUsTUFBTSxDQUFDOztFQUM5QixNQUFBLEdBQVMsTUFBTSxDQUFDLE1BQVAsR0FBZ0IsTUFBTSxDQUFDOztFQUNoQyxNQUFBLEdBQVMsTUFBTSxDQUFDLE9BQU8sQ0FBQzs7RUFDeEIsR0FBQSxHQUFNLElBQUksS0FBSixDQUFBOztFQUNOLE9BQUEsR0FBVTs7RUFDVixPQUFBLEdBQVUsQ0FBQTs7RUFDVixJQUFBLEdBQU87O0VBQ1AsS0FBQSxHQUFROztFQUNSLE1BQUEsR0FBUzs7RUFDVCxLQUFBLEdBQVE7SUFDUCxDQUFBLEVBQUUsQ0FESztJQUVQLENBQUEsRUFBRTtFQUZLOztFQUtSLElBQUEsR0FBTyxRQUFBLENBQUEsQ0FBQTtJQUNOLFlBQUEsQ0FBQTtJQUVBLEdBQUcsQ0FBQyxNQUFKLEdBQWEsUUFBQSxDQUFDLENBQUQsQ0FBQTtBQUVaLFVBQUEsWUFBQTs7TUFBQSxPQUFPLENBQUMsS0FBUixHQUFtQixDQUFDLENBQUMsSUFBTCxHQUFlLENBQUMsQ0FBQyxJQUFLLENBQUEsQ0FBQSxDQUFFLENBQUMsS0FB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QUFBO0FBckpBIiwic291cmNlc0NvbnRlbnQiOlsiIyBWYXJpYWJsZXNcbmNhbnZhcyA9IGRvY3VtZW50LmdldEVsZW1lbnRCeUlkKCdjYW52YXMnKTtcbmN0eCA9IGNhbnZhcy5nZXRDb250ZXh0KCcyZCcpO1xud2lkdGggPSBjYW52YXMud2lkdGggPSB3aW5kb3cuaW5uZXJXaWR0aDtcbmhlaWdodCA9IGNhbnZhcy5oZWlnaHQgPSB3aW5kb3cuaW5uZXJIZWlnaHQ7XG5pbWdTcmMgPSBjYW52YXMuZGF0YXNldC5pbWFnZTtcbmltZyA9IG5ldyBJbWFnZSgpO1xudXNlR3JpZCA9IHRydWVcbmltZ0luZm8gPSB7fTtcbmltZ3MgPSBbXTtcbmdyaWRzID0gW107XG5tYWduZXQgPSAyMDAwO1xubW91c2UgPSB7XG5cdHg6MVxuXHR5OjBcbn1cblxuaW5pdCA9ICgpLT5cblx0YWRkTGlzdGVuZXJzKCk7XG5cdFxuXHRpbWcub25sb2FkID0gKGUpLT5cblx0XHQjIENoZWNrIGZvciBmaXJlZm94LiBcblx0XHRpbWdJbmZvLndpZHRoID0gaWYgZS5wYXRoIHRoZW4gZS5wYXRoWzBdLndpZHRoIGVsc2UgZS50YXJnZXQud2lkdGhcblx0XHRpbWdJbmZvLmhlaWdodCA9IGlmIGUucGF0aCB0aGVuIGUucGF0aFswXS5oZWlnaHQgZWxzZSBlLnRhcmdldC5oZWlnaHQgXG5cdFx0XHRcblx0XHRudW1iZXJUb1Nob3cgPSAoTWF0aC5jZWlsKHdpbmRvdy5pbm5lcldpZHRoIC8gaW1nSW5mby53aWR0aCkpICogKE1hdGguY2VpbCh3aW5kb3cuaW5uZXJIZWlnaHQgLyBpbWdJbmZvLmhlaWdodCkpXG5cdFx0XG5cdFx0Y3JlYXRlR3JpZCgpIGlmIHVzZUdyaWQ7XG5cdFx0cG9wdWxhdGVDYW52YXMobnVtYmVyVG9TaG93ICogNCk7XG5cdFx0XG5cdFx0IyBJbWFnZSBpcyByZWFkeSBhbmQgd2UncmUgcmVhZHkgdG8gZ29cblx0XHRjYW52YXMuY2xhc3NMaXN0LmFkZCgncmVhZHknKTtcblx0XHRyZW5kZXIoKTtcblx0XHRcblx0aW1nLnNyYyA9IGltZ1NyYztcblx0XG5hZGRMaXN0ZW5lcnMgPSAoKS0+XG5cdHdpbmRvdy5hZGRFdmVudExpc3RlbmVyKCdyZXNpemUnLHJlc2l6ZUNhbnZhcyk7XG5cdHdpbmRvdy5hZGRFdmVudExpc3RlbmVyKCdtb3VzZW1vdmUnLCB1cGRhdGVNb3VzZSk7XG5cdHdpbmRvdy5hZGRFdmVudExpc3RlbmVyKCd0b3VjaG1vdmUnLCB1cGRhdGVNb3VzZSk7XG5cdFxudXBkYXRlTW91c2UgPSAoZSktPlxuXG5cdG1vdXNlLnggPSBlLmNsaWVudFhcblx0bW91c2UueSA9IGUuY2xpZW50WVxuXHRcbnJlc2l6ZUNhbnZhcyA9ICgpLT5cblx0d2lkdGggPSBjYW52YXMud2lkdGggPSB3aW5kb3cuaW5uZXJXaWR0aDtcblx0aGVpZ2h0ID0gY2FudmFzLmhlaWdodCA9IHdpbmRvdy5pbm5lckhlaWdodDtcblx0XG4jIE1hZ2ljXG5wb3B1bGF0ZUNhbnZhcyA9IChuYiktPlxuXHRpID0gMDtcblx0d2hpbGUgaSA8PSBuYlxuXHRcdHAgPSBuZXcgUGhvdG8oKTtcblx0XHRpbWdzLnB1c2ggcFxuXHRcdGkrKztcblx0XG5jcmVhdGVHcmlkID0gKCktPlxuXHRpbWdTY2FsZSA9IDAuNVxuXHRncmlkID0ge1xuXHRcdHJvdzogTWF0aC5jZWlsKHdpbmRvdy5pbm5lcldpZHRoIC8gKGltZ0luZm8ud2lkdGggKiBpbWdTY2FsZSkpXG5cdFx0Y29sczogTWF0aC5jZWlsKHdpbmRvdy5pbm5lckhlaWdodCAvIChpbWdJbmZvLmhlaWdodCAqIGltZ1NjYWxlKSlcblx0XHRyb3dXaWR0aDogaW1nSW5mby53aWR0aCAqIGltZ1NjYWxlXG5cdFx0Y29sSGVpZ2h0OiBpbWdJbmZvLmhlaWdodCAqIGltZ1NjYWxlXG5cdH1cblx0XG5cdGZvciByIGluIFswLi4uZ3JpZC5yb3ddXG5cdFx0eCA9IHIgKiBncmlkLnJvd1dpZHRoXG5cdFx0Zm9yIGMgaW4gWzAuLi5ncmlkLmNvbHNdXG5cdFx0XHR5ID0gYyAqIGdyaWQuY29sSGVpZ2h0XG5cdFx0XHRcblx0XHRcdGl0ZW0gPSBuZXcgZ3JpZEl0ZW0oeCx5LGdyaWQucm93V2lkdGgsZ3JpZC5jb2xIZWlnaHQpXG5cdFx0XHRncmlkcy5wdXNoIGl0ZW07XG5cdFx0XHRcblx0Zm9yIGkgaW4gWzAuLi5ncmlkcy5sZW5ndGhdXG5cdFx0Z3JpZHNbaV0uZHJhdygpO1xuXHRcbmdyaWRJdGVtID0gKHggPSAwLCB5ID0gMCwgdywgaCktPlxuXHR0aGlzLmRyYXcgPSAoKS0+XG5cdFx0Y3R4LmRyYXdJbWFnZShpbWcsIHgsIHksIHcsIGgpO1xuXHRcdHJldHVyblxuXHRyZXR1cm5cblxuUGhvdG8gPSAoKS0+XG5cdHNlZWQgPSBNYXRoLnJhbmRvbSgpICogKDIuNSAtIDAuNykgKyAwLjc7XG5cdHcgPSBpbWdJbmZvLndpZHRoIC8gc2VlZFxuXHRoID0gaW1nSW5mby5oZWlnaHQgLyBzZWVkXG5cdHggPSB3aW5kb3cuaW5uZXJXaWR0aCAqIE1hdGgucmFuZG9tKClcblx0ZmluYWxYID0geFxuXHR5ID0gd2luZG93LmlubmVySGVpZ2h0ICogTWF0aC5yYW5kb20oKVxuXHRmaW5hbFkgPSB5XHRcblx0Y29uc29sZS5sb2coXCJJTklUIFkgOjogI3tmaW5hbFl9IHx8IElOSVQgWCA6OiAje2ZpbmFsWH1cIilcblx0ciA9IE1hdGgucmFuZG9tKCkgKiAoMTgwIC0gKC0xODApKSArICgtMTgwKVxuXHRcblx0Zm9yY2VYID0gMFxuXHRmb3JjZVkgPSAwXG5cdFxuXHRUT19SQURJQU5TID0gTWF0aC5QSS8xODBcblx0XG5cdHRoaXMudXBkYXRlID0gKCktPlxuXHRcdHgwID0geFxuXHRcdHkwID0geVxuXHRcdHgxID0gbW91c2UueFxuXHRcdHkxID0gbW91c2UueVxuXHRcdFxuXHRcdGR4ID0geDEgLSB4MFxuXHRcdGR5ID0geTEgLSB5MFxuXHRcdFxuXHRcdGRpc3RhbmNlID0gTWF0aC5zcXJ0KChkeCAqIGR4KSArIChkeSAqIGR5KSlcblx0XHRwb3dlclggPSB4MCAtIChkeCAvIGRpc3RhbmNlKSAqIG1hZ25ldCAvIGRpc3RhbmNlO1xuXHRcdHBvd2VyWSA9IHkwIC0gKGR5IC8gZGlzdGFuY2UpICogbWFnbmV0IC8gZGlzdGFuY2Vcblx0XHRcblx0XHRmb3JjZVggPSAoZm9yY2VYICsgKGZpbmFsWCAtIHgwKSAvIDIpIC8gMi4xXG5cdFx0Zm9yY2VZID0gKGZvcmNlWSArIChmaW5hbFkgLSB5MCkgLyAyKSAvIDIuMlxuXG5cdFx0XG5cblx0XHR4ID0gcG93ZXJYICsgZm9yY2VYXG5cdFx0eSA9IHBvd2VyWSArIGZvcmNlWVxuXHRcblx0XHRyZXR1cm5cblx0dGhpcy5kcmF3ID0gKCktPlxuXHRcdHJvdGF0ZUFuZFBhaW50SW1hZ2UoY3R4LCBpbWcsIHIgKiBUT19SQURJQU5TLCB4LCB5LCB3IC8gMiwgaCAvIDIsIHcsIGgpXG5cdHJldHVyblxuXG5yb3RhdGVBbmRQYWludEltYWdlID0gKCBjb250ZXh0LCBpbWFnZSwgYW5nbGUgLCBwb3NpdGlvblgsIHBvc2l0aW9uWSwgYXhpc1gsIGF4aXNZLCB3aWR0aFgsIHdpZHRoWSktPlxuXHRjb250ZXh0LnRyYW5zbGF0ZSggcG9zaXRpb25YLCBwb3NpdGlvblkgKTtcblx0Y29udGV4dC5yb3RhdGUoIGFuZ2xlICk7XG5cdGNvbnRleHQuZHJhd0ltYWdlKCBpbWFnZSwgLWF4aXNYLCAtYXhpc1ksIHdpZHRoWCwgd2lkdGhZICk7XG5cdGNvbnRleHQucm90YXRlKCAtYW5nbGUgKTtcblx0Y29udGV4dC50cmFuc2xhdGUoIC1wb3NpdGlvblgsIC1wb3NpdGlvblkgKTtcblxucmVuZGVyID0gKCktPlxuXHR4ID0gMFxuXHR5ID0gMFxuXHRjdHguY2xlYXJSZWN0KDAsMCx3aWR0aCxoZWlnaHQpXG5cdHdoaWxlIHkgPCBncmlkcy5sZW5ndGhcblx0XHRncmlkc1t5XS5kcmF3KClcblx0XHR5Kytcblx0d2hpbGUgeCA8IGltZ3MubGVuZ3RoXG5cdFx0aW1nc1t4XS51cGRhdGUoKVxuXHRcdGltZ3NbeF0uZHJhdygpXG5cdFx0eCsrXG5cdFx0XG5cdHJlcXVlc3RBbmltYXRpb25GcmFtZSByZW5kZXJcblx0XG5cdFxuXHRcdFxuaW5pdCgpOyJdfQ==
-//# sourceURL=coffeescript
+	return ParticleEngine;
+
+}());
+
+
+////////////////////////UTILS//////////////////////////////////////
+//////////////////////////////////////////////////////////////////
+
+function range(min, max)
+{
+	return min + (max - min) * Math.random();
+}
+		
+function round(num, precision)
+{
+   var decimal = Math.pow(10, precision);
+   return Math.round(decimal* num) / decimal;
+}
+
+function weightedRange(to, from, decimalPlaces, weightedRange, weightStrength)
+{
+	if (typeof from === "undefined" || from === null) { 
+	    from = 0; 
+	}
+	if (typeof decimalPlaces === "undefined" || decimalPlaces === null) { 
+	    decimalPlaces = 0; 
+	}
+	if (typeof weightedRange === "undefined" || weightedRange === null) { 
+	    weightedRange = 0; 
+	}
+	if (typeof weightStrength === "undefined" || weightStrength === null) { 
+	    weightStrength = 0; 
+	}
+
+   var ret
+   if(to == from){return(to);}
+ 
+   if(weightedRange && Math.random()<=weightStrength){
+	  ret = round( Math.random()*(weightedRange[1]-weightedRange[0]) + weightedRange[0], decimalPlaces )
+   }else{
+	  ret = round( Math.random()*(to-from)+from, decimalPlaces )
+   }
+   return(ret);
+}
+
+///////////////// RUN CODE //////////////////////////
+//////////////////////////////////////////////////////
+
+var particles
+(function(){
+	particles = new ParticleEngine('projector');
+	createjs.Ticker.addEventListener("tick", updateCanvas);
+	window.addEventListener('resize', resizeCanvas, false);
+
+	function updateCanvas(){
+		particles.render();
+	}
+
+	function resizeCanvas(){
+		particles.resize();
+	}
+}());
