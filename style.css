@@ -57,3 +57,28 @@ html, body{
 	left:0;
     filter: alpha(opacity=0);
 }
+
+.intro {
+  position: absolute;
+  padding: 20px;
+  -webkit-transform: translate(-50%, -50%);
+          transform: translate(-50%, -50%);
+  left: 50%;
+  top: 50%;
+  text-align: center;
+  color: #fafafa;
+  z-index: 10;
+  width: 100%;
+  max-width: 700px;
+  font-family: "HelveticaNeue-Light", "Helvetica Neue Light", "Helvetica Neue", Helvetica, Arial, "Lucida Grande", sans-serif;
+  text-shadow: 0px 5px 20px black;
+}
+.intro h1 {
+  font-size: 40px;
+  font-weight: 300;
+  letter-spacing: 2px;
+}
+.intro p {
+  letter-spacing: 1px;
+  line-height: 24px;
+}
