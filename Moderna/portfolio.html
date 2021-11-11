@@ -5,7 +5,7 @@
   <meta charset="utf-8">
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
 
-  <title>Portfolio - Moderna Bootstrap Template</title>
+  <title>Results - Veleta.ai</title>
   <meta content="" name="description">
   <meta content="" name="keywords">
 
@@ -28,6 +28,14 @@
   <!-- Template Main CSS File -->
   <link href="assets/css/style.css" rel="stylesheet">
 
+  <!-- Graphic Libraries -->
+
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="assets/js/table.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/nvd3/1.8.6/nv.d3.min.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/dygraph/2.1.0/dygraph.min.js"></script>
+  <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/dygraph/2.1.0/dygraph.min.css" />
+
   <!-- =======================================================
   * Template Name: Moderna - v4.7.0
   * Template URL: https://bootstrapmade.com/free-bootstrap-template-corporate-moderna/
@@ -43,7 +51,7 @@
     <div class="container d-flex justify-content-between align-items-center">
 
       <div class="logo">
-        <h1 class="text-light"><a href="index.html"><span>Moderna</span></a></h1>
+        <h1 class="text-light"><a href="index.html"><span>Results</span></a></h1>
         <!-- Uncomment below if you prefer to use an image logo -->
         <!-- <a href="index.html"><img src="assets/img/logo.png" alt="" class="img-fluid"></a>-->
       </div>
@@ -88,27 +96,30 @@
       <div class="container">
 
         <div class="d-flex justify-content-between align-items-center">
-          <h2>Our Portfolio</h2>
+          <h2>Our Results</h2>
           <ol>
             <li><a href="index.html">Home</a></li>
-            <li>Our Portfolio</li>
+            <li>Our Results</li>
           </ol>
         </div>
 
       </div>
     </section><!-- End Our Portfolio Section -->
 
+    
     <!-- ======= Portfolio Section ======= -->
     <section class="portfolio">
       <div class="container">
+
+        <svg class="canvas"></svg>
 
         <div class="row">
           <div class="col-lg-12">
             <ul id="portfolio-flters">
               <li data-filter="*" class="filter-active">All</li>
-              <li data-filter=".filter-app">App</li>
-              <li data-filter=".filter-card">Card</li>
-              <li data-filter=".filter-web">Web</li>
+              <li data-filter=".filter-app">Daily LIVE</li>
+              <li data-filter=".filter-card">ROI</li>
+              <li data-filter=".filter-web">Weekly results</li>
             </ul>
           </div>
         </div>
@@ -242,7 +253,7 @@
   <!-- ======= Footer ======= -->
   <footer id="footer" data-aos="fade-up" data-aos-easing="ease-in-out" data-aos-duration="500">
 
-    <div class="footer-newsletter">
+    <!--<div class="footer-newsletter">
       <div class="container">
         <div class="row">
           <div class="col-lg-6">
@@ -256,7 +267,7 @@
           </div>
         </div>
       </div>
-    </div>
+    </div>-->
 
     <div class="footer-top">
       <div class="container">
@@ -297,8 +308,8 @@
           </div>
 
           <div class="col-lg-3 col-md-6 footer-info">
-            <h3>About Moderna</h3>
-            <p>Cras fermentum odio eu feugiat lide par naso tierra. Justo eget nada terra videa magna derita valies darta donna mare fermentum iaculis eu non diam phasellus.</p>
+            <h3>About Veleta.ai</h3>
+            <p>The team at Veleta.AI was born out of a love of applying data science and artificial intelligence to challenging problems. The team has a broad industrial experience covering digital transformation, advanced analytics, AI and software engineering. Founded in 2020 the company is already delivering advanced algorithmic trading tools and advanced automation to a mix of financial instruments and assets in the financial markets.</p>
             <div class="social-links mt-3">
               <a href="#" class="twitter"><i class="bx bxl-twitter"></i></a>
               <a href="#" class="facebook"><i class="bx bxl-facebook"></i></a>
